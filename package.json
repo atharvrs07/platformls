@@ -1,0 +1,24 @@
+{
+  "name": "liquilink-platform",
+  "private": true,
+  "version": "1.0.0",
+  "description": "LiquiLink — all-in-one AI workspace platform",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @liquilink/web",
+    "dev:web": "npm run dev --workspace @liquilink/web",
+    "dev:server": "npm run dev --workspace @liquilink/server",
+    "build": "npm run build --workspace @liquilink/web",
+    "build:server": "npm run build --workspace @liquilink/server",
+    "lint": "npm run lint --workspaces",
+    "typecheck": "npm run typecheck --workspaces",
+    "db:generate": "npm run db:generate --workspace @liquilink/server",
+    "db:migrate": "npm run db:migrate --workspace @liquilink/server",
+    "db:seed": "npm run db:seed --workspace @liquilink/server"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

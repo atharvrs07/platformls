@@ -1,0 +1,19 @@
+import { Router, Request, Response } from "express";
+import authRoutes from "./auth.routes.js";
+import userRoutes from "./user.routes.js";
+import workspaceRoutes from "./workspace.routes.js";
+import settingsRoutes from "./settings.routes.js";
+
+const router = Router();
+
+router.get("/health", (_req: Request, res: Response) => {
+  res.json({ success: true, status: "ok", uptime: process.uptime() });
+});
+
+router.use("/auth", authRoutes);
+router.use("/user", userRoutes);
+router.use("/profile", settingsRoutes);
+router.use("/workspace", workspaceRoutes);
+router.use("/settings", settingsRoutes);
+
+export default router;

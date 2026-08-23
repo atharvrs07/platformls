@@ -1,0 +1,322 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+// To switch back to PostgreSQL: set provider = "postgresql", point DATABASE_URL at
+// your Postgres instance, and run `prisma migrate dev` (drop prisma/migrations/dev.db* first).
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// Note: enum values are stored as String for SQLite compatibility
+// (the SQLite connector does not support native enums or Json).
+// Re-enable Prisma enums when switching back to PostgreSQL.
+// ============================================================
+
+// ============================================================
+// Identity
+// ============================================================
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  emailVerified Boolean        @default(false)
+  username      String         @unique
+  fullName      String
+  passwordHash  String
+  avatarUrl     String?
+  timezone      String         @default("UTC")
+  role          String         @default("USER") // USER | ADMIN | OWNER
+  isActive      Boolean        @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  profile       Profile?
+  preferences   UserPreferences?
+  sessions      Session[]
+  memberships   WorkspaceMember[]
+  workspacesOwned Workspace[]
+  subscription  Subscription?
+  credits       Credits?
+  creditTxns    CreditTransaction[]
+  emailTokens   EmailToken[]
+
+  // Future modules
+  apiKeys       ApiKey[]
+  auditLogs     AuditLog[]
+
+  @@index([createdAt])
+  @@index([email])
+}
+
+model Profile {
+  id          String  @id @default(cuid())
+  userId      String  @unique
+  bio         String?
+  location    String?
+  website     String?
+  company     String?
+  title       String?
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+}
+
+model UserPreferences {
+  id                   String  @id @default(cuid())
+  userId               String  @unique
+  theme                String  @default("SYSTEM") // LIGHT | DARK | SYSTEM
+  language             String  @default("en")
+  emailNotifications   Boolean @default(true)
+  productUpdates       Boolean @default(true)
+  weeklyDigest         Boolean @default(true)
+  marketingEmails      Boolean @default(false)
+  twoFactorEnabled     Boolean @default(false)
+  reducedMotion        Boolean @default(false)
+  user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  updatedAt            DateTime @updatedAt
+  createdAt            DateTime @default(now())
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  userAgent    String?
+  ipAddress    String?
+  tokenHash    String   @unique
+  expiresAt    DateTime
+  lastActiveAt DateTime @default(now())
+  isCurrent    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model EmailToken {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  kind       String   // VERIFY_EMAIL | RESET_PASSWORD
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, kind])
+}
+
+// ============================================================
+// Workspaces & Projects
+// ============================================================
+
+model Workspace {
+  id          String             @id @default(cuid())
+  name        String
+  slug        String             @unique
+  logoUrl     String?
+  isPersonal  Boolean            @default(false)
+  createdById String
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  members     WorkspaceMember[]
+  projects    Project[]
+
+  createdBy   User               @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([createdById])
+}
+
+model WorkspaceMember {
+  id           String            @id @default(cuid())
+  workspaceId  String
+  userId       String
+  role         String            @default("MEMBER") // OWNER | ADMIN | MEMBER
+  status       String            @default("ACTIVE") // ACTIVE | INVITED | PENDING
+  joinedAt     DateTime          @default(now())
+
+  workspace    Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+model Project {
+  id          String    @id @default(cuid())
+  workspaceId String
+  name        String
+  description String?
+  icon        String?
+  color       String?
+  isArchived  Boolean   @default(false)
+  createdById String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([isArchived])
+}
+
+// ============================================================
+// Monetization
+// ============================================================
+
+model Subscription {
+  id           String             @id @default(cuid())
+  userId       String             @unique
+  plan         String             @default("FREE") // FREE | PRO | TEAM | ENTERPRISE
+  status       String             @default("ACTIVE") // TRIALING | ACTIVE | PAST_DUE | CANCELED | INCOMPLETE
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  cancelAtPeriodEnd  Boolean      @default(false)
+  provider     String?            // stripe | razorpay | ...
+  providerId   String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Credits {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  balance   Int      @default(0)
+  lifetime  Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CreditTransaction {
+  id          String        @id @default(cuid())
+  userId      String
+  amount      Int           // signed delta (+credit / -usage)
+  reason      String        // signed delta reason: SIGNUP_BONUS | PURCHASE | REFERRAL | USAGE | REFUND | EXPIRY
+  description String?
+  createdAt   DateTime      @default(now())
+
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+// ============================================================
+// FUTURE MODULES — tables are prepared for later phases.
+// Enable each model when its feature ships.
+// ============================================================
+
+// model Flow {
+//   id          String   @id @default(cuid())
+//   workspaceId String
+//   name        String
+//   triggerType String?
+//   status      String   @default("DRAFT")
+//   definition  Json?
+//   createdAt   DateTime @default(now())
+//   updatedAt   DateTime @updatedAt
+// }
+
+// model Agent {
+//   id          String   @id @default(cuid())
+//   workspaceId String
+//   name        String
+//   model       String?
+//   instructions String?
+//   tools       Json?
+//   createdAt   DateTime @default(now())
+//   updatedAt   DateTime @updatedAt
+// }
+
+// model Chat {
+//   id          String   @id @default(cuid())
+//   workspaceId String
+//   title       String?
+//   messages    Json?
+//   createdAt   DateTime @default(now())
+//   updatedAt   DateTime @updatedAt
+// }
+
+// model VoiceProject {
+//   id          String   @id @default(cuid())
+//   workspaceId String
+//   name        String
+//   language    String?
+//   settings    Json?
+//   createdAt   DateTime @default(now())
+//   updatedAt   DateTime @updatedAt
+// }
+
+// model StorageBucket {
+//   id          String   @id @default(cuid())
+//   workspaceId String
+//   name        String
+//   provider    String?
+//   region      String?
+//   createdAt   DateTime @default(now())
+// }
+
+// model DatabaseInstance {
+//   id          String   @id @default(cuid())
+//   workspaceId String
+//   name        String
+//   engine      String?
+//   status      String   @default("PROVISIONING")
+//   createdAt   DateTime @default(now())
+// }
+
+// model Integration {
+//   id          String   @id @default(cuid())
+//   workspaceId String
+//   provider    String
+//   enabled     Boolean  @default(false)
+//   config      Json?
+//   createdAt   DateTime @default(now())
+//   updatedAt   DateTime @updatedAt
+// }
+
+model ApiKey {
+  id        String    @id @default(cuid())
+  userId    String
+  name      String
+  keyHash   String    @unique
+  prefix    String
+  scopes    String?
+  lastUsedAt DateTime?
+  expiresAt DateTime?
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  workspaceId String?
+  action    String
+  resource  String?
+  resourceId String?
+  meta      String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([workspaceId])
+  @@index([createdAt])
+}

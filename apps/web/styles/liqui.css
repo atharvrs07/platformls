@@ -1,0 +1,426 @@
+/* ============================================================================
+   LIQUILINK — LIQUI MATERIAL DESIGN SYSTEM
+   ----------------------------------------------------------------------------
+   Material concept: perfectly still, crystal-clear, optically deep water.
+
+   A Liqui surface is a shallow volume of clear liquid. Its centre stays
+   nearly invisible; its existence is revealed by:
+     · layered hairline boundaries that imply transparent THICKNESS
+     · a bright refractive highlight following the curve
+     · faint localized spectral dispersion where corners catch light
+     · micro elevation — wide, diffuse, low-opacity shadow
+
+   Geometry: true continuous-curvature squircles via --liqui-clip
+   (generated per-element by components/liqui/squircle.tsx), falling back
+   to border-radius when JS hasn't run.
+
+   Layers:
+     1. Tokens        – geometry, optics, elevation, motion (light + dark)
+     2. Canvas        – calm page backgrounds supporting the material
+     3. Materials     – .liqui-primary / .liqui-secondary / .liqui-deep /
+                        .liqui-minimal
+     4. Interactions  – hover lift, focus waterline, liquid state morph
+   ========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   1. TOKENS
+   ------------------------------------------------------------------------ */
+
+:root {
+  /* ---- GEOMETRY (continuous squircle system) ---- */
+  --liqui-g1: 0.625rem;               /* G1 · compact: chips, icon tiles, dense controls */
+  --liqui-g2: 1rem;                   /* G2 · SIGNATURE: cards, buttons, inputs, nodes, menus */
+  --liqui-g3: 1.5rem;                 /* G3 · large: modals, dialogs, drawers, major panels */
+
+  /* ---- OPTICS ---- */
+  --liqui-ring-width: 1.5px;
+
+  /* Refractive boundary: bright light entering the top curve, relaxing into
+     a soft darker line along the far side of the volume. */
+  --liqui-edge-highlight: linear-gradient(
+    150deg,
+    rgb(255 255 255 / 1) 0%,
+    rgb(255 255 255 / 0.62) 16%,
+    rgb(226 232 240 / 0.34) 34%,
+    rgb(100 116 139 / 0.3) 52%,
+    rgb(148 163 184 / 0.24) 64%,
+    rgb(255 255 255 / 0.55) 82%,
+    rgb(203 213 225 / 0.42) 100%
+  );
+
+  /* Spectral dispersion — ONLY where curved edges catch and split light.
+     Low saturation, low alpha, uneven placement. Never a rainbow ring. */
+  --liqui-dispersion:
+    radial-gradient(58% 72% at 4% 2%, rgb(103 232 249 / 0.42) 0%, transparent 62%),     /* TL · cyan/aqua */
+    radial-gradient(54% 66% at 98% 6%, rgb(196 181 253 / 0.32) 0%, transparent 64%),    /* TR · violet */
+    radial-gradient(56% 68% at 2% 96%, rgb(147 197 253 / 0.3) 0%, transparent 64%),     /* BL · soft blue */
+    radial-gradient(50% 62% at 99% 94%, rgb(249 168 212 / 0.24) 0%, transparent 66%),   /* BR · faint rose */
+    radial-gradient(38% 48% at 50% -6%, rgb(252 211 77 / 0.12) 0%, transparent 64%);    /* top · warm trace */
+
+  /* Still-water fill + interior depth washes:
+     luminance held in the upper curve, cool depth settling low,
+     a whisper of sky-caustic tint near the light source. */
+  --liqui-fill: rgb(255 255 255 / 0.6);
+  --liqui-wash:
+    radial-gradient(130% 70% at 20% -12%, rgb(186 230 253 / 0.22) 0%, transparent 55%),
+    radial-gradient(110% 85% at 88% 114%, rgb(129 148 171 / 0.18) 0%, transparent 58%),
+    linear-gradient(
+      180deg,
+      rgb(255 255 255 / 0.62) 0%,
+      rgb(255 255 255 / 0.26) 32%,
+      rgb(222 231 239 / 0.14) 68%,
+      rgb(199 212 225 / 0.3) 100%
+    );
+  --liqui-inner-light:
+    inset 0 1px 1px rgb(255 255 255 / 0.8),
+    inset 1px 0 1px rgb(255 255 255 / 0.3),
+    inset 0 -1px 2px rgb(71 85 105 / 0.08),
+    inset -1px 0 2px rgb(71 85 105 / 0.06);
+
+  /* ---- ELEVATION ---- */
+  --liqui-shadow-micro:
+    0 0 0 0.5px rgb(100 116 139 / 0.09),
+    0 1px 1px rgb(15 23 42 / 0.02),
+    0 2px 6px rgb(15 23 42 / 0.03),
+    0 12px 32px -8px rgb(15 23 42 / 0.07);
+  --liqui-shadow-standard:
+    0 0 0 0.5px rgb(100 116 139 / 0.1),
+    0 1px 2px rgb(15 23 42 / 0.03),
+    0 4px 10px rgb(15 23 42 / 0.04),
+    0 20px 48px -12px rgb(15 23 42 / 0.1);
+  --liqui-shadow-major:
+    0 0 0 0.5px rgb(100 116 139 / 0.11),
+    0 2px 6px rgb(15 23 42 / 0.04),
+    0 12px 28px -8px rgb(15 23 42 / 0.09),
+    0 44px 110px -24px rgb(15 23 42 / 0.16);
+
+  /* ---- MOTION ---- */
+  --liqui-ease-fluid: cubic-bezier(0.34, 0.72, 0.08, 1);   /* primary fluid ease */
+  --liqui-ease-settle: cubic-bezier(0.22, 1, 0.36, 1);     /* gentle settling */
+  --liqui-dur-fast: 170ms;
+  --liqui-dur-std: 320ms;
+  --liqui-dur-slow: 560ms;
+}
+
+/* Dark mode: clear water at night — deep blue-black depth instead of
+   black + white cards. Edges carry the form with cool light lines and
+   slightly more perceptible dispersion against the darkness. */
+.dark {
+  --liqui-edge-highlight: linear-gradient(
+    150deg,
+    rgb(224 242 254 / 0.7) 0%,
+    rgb(186 214 240 / 0.28) 18%,
+    rgb(2 8 16 / 0.65) 46%,
+    rgb(2 8 16 / 0.45) 60%,
+    rgb(147 197 253 / 0.3) 84%,
+    rgb(125 211 252 / 0.42) 100%
+  );
+
+  --liqui-dispersion:
+    radial-gradient(58% 72% at 4% 2%, rgb(103 232 249 / 0.44) 0%, transparent 62%),
+    radial-gradient(54% 66% at 98% 6%, rgb(196 181 253 / 0.36) 0%, transparent 64%),
+    radial-gradient(56% 68% at 2% 96%, rgb(96 165 250 / 0.32) 0%, transparent 64%),
+    radial-gradient(50% 62% at 99% 94%, rgb(244 164 208 / 0.22) 0%, transparent 66%),
+    radial-gradient(38% 48% at 50% -6%, rgb(253 224 122 / 0.09) 0%, transparent 64%);
+
+  --liqui-fill: rgb(24 33 44 / 0.62);
+  --liqui-wash:
+    radial-gradient(130% 70% at 20% -12%, rgb(56 96 138 / 0.3) 0%, transparent 55%),
+    radial-gradient(110% 85% at 88% 114%, rgb(10 16 26 / 0.5) 0%, transparent 60%),
+    linear-gradient(
+      180deg,
+      rgb(58 76 98 / 0.42) 0%,
+      rgb(30 41 55 / 0.2) 36%,
+      rgb(10 15 23 / 0.28) 100%
+    );
+  --liqui-inner-light:
+    inset 0 1px 1px rgb(214 235 252 / 0.35),
+    inset 1px 0 1px rgb(214 235 252 / 0.12),
+    inset 0 -1px 2px rgb(0 0 0 / 0.4),
+    inset -1px 0 2px rgb(0 0 0 / 0.3);
+
+  --liqui-shadow-micro:
+    0 0 0 0.5px rgb(148 197 253 / 0.07),
+    0 1px 2px rgb(0 0 0 / 0.4),
+    0 3px 8px rgb(0 0 0 / 0.28),
+    0 14px 36px -10px rgb(0 0 0 / 0.5);
+  --liqui-shadow-standard:
+    0 0 0 0.5px rgb(148 197 253 / 0.08),
+    0 2px 4px rgb(0 0 0 / 0.4),
+    0 6px 14px rgb(0 0 0 / 0.32),
+    0 24px 56px -16px rgb(0 0 0 / 0.6);
+  --liqui-shadow-major:
+    0 0 0 0.5px rgb(148 197 253 / 0.1),
+    0 2px 8px rgb(0 0 0 / 0.45),
+    0 16px 36px -10px rgb(0 0 0 / 0.5),
+    0 52px 130px -28px rgb(0 0 0 / 0.72);
+}
+
+/* ---------------------------------------------------------------------------
+   2. CANVAS — quiet spatial background supporting the material
+   ------------------------------------------------------------------------ */
+
+@layer components {
+
+.bg-liqui-canvas {
+  background-color: #e9edf3;
+  background-image:
+    radial-gradient(120% 90% at 50% -20%, rgb(255 255 255 / 0.9) 0%, transparent 58%),
+    radial-gradient(70% 60% at 108% 112%, rgb(168 216 244 / 0.2) 0%, transparent 64%),
+    radial-gradient(60% 52% at -8% 108%, rgb(183 194 250 / 0.16) 0%, transparent 62%);
+  background-attachment: fixed;
+}
+
+.dark .bg-liqui-canvas {
+  background-color: #080c12;
+  background-image:
+    radial-gradient(120% 90% at 50% -20%, rgb(40 58 80 / 0.55) 0%, transparent 62%),
+    radial-gradient(70% 60% at 108% 112%, rgb(30 64 98 / 0.26) 0%, transparent 64%),
+    radial-gradient(60% 52% at -8% 108%, rgb(49 46 105 / 0.18) 0%, transparent 62%);
+}
+
+.bg-liqui-canvas-raised {
+  background-color: #e3e8ef;
+  background-image:
+    radial-gradient(100% 80% at 50% 0%, rgb(255 255 255 / 0.75) 0%, transparent 58%);
+}
+
+.dark .bg-liqui-canvas-raised {
+  background-color: #05080d;
+  background-image:
+    radial-gradient(100% 80% at 50% 0%, rgb(30 44 62 / 0.5) 0%, transparent 60%);
+}
+
+/* ---------------------------------------------------------------------------
+   3. MATERIALS
+   ------------------------------------------------------------------------ */
+
+/* Shared behaviour: stacking context for the pseudo layers. */
+.liqui,
+.liqui-primary,
+.liqui-secondary,
+.liqui-minimal,
+.liqui-deep,
+.liqui-shape {
+  position: relative;
+  isolation: isolate;
+}
+
+/* Direct squircle application for elements whose elevation lives entirely
+   in inset shading (filled buttons). */
+.liqui-shape {
+  clip-path: var(--liqui-clip);
+}
+
+/* Squircle content containment — replaces overflow-hidden on Liqui surfaces
+   so inner toolbars/lists follow the continuous outline instead of being
+   cut by a circular border-radius. */
+.liqui-clip-content {
+  clip-path: var(--liqui-clip);
+  border-radius: inherit;
+}
+
+/* ---- LIQUI PRIMARY ------------------------------------------------------ */
+
+.liqui-primary {
+  box-shadow: var(--liqui-shadow-micro);
+}
+
+/* Interior volume — the clear water body. Clipped to the true squircle. */
+.liqui-primary::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  clip-path: var(--liqui-clip);
+  background-color: var(--liqui-fill);
+  background-image: var(--liqui-wash);
+  box-shadow: var(--liqui-inner-light);
+  pointer-events: none;
+}
+
+/* Edge optics — layered boundaries implying transparent thickness.
+   Sits above content edges like the meniscus of the liquid. */
+.liqui-primary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  clip-path: var(--liqui-clip);
+  padding: var(--liqui-ring-width);
+  background: var(--liqui-dispersion), var(--liqui-edge-highlight);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* ---- LIQUI SECONDARY — reduced optics ----------------------------------- */
+
+.liqui-secondary {
+  box-shadow:
+    0 0 0 0.5px rgb(100 116 139 / 0.08),
+    0 1px 2px rgb(15 23 42 / 0.02),
+    0 8px 22px -8px rgb(15 23 42 / 0.05);
+}
+
+.liqui-secondary::before {
+  opacity: 0.75;
+}
+
+.liqui-secondary::after {
+  padding: 1px;
+  opacity: 0.8;
+}
+
+.dark .liqui-secondary {
+  box-shadow:
+    0 0 0 0.5px rgb(148 197 253 / 0.05),
+    0 1px 2px rgb(0 0 0 / 0.32),
+    0 10px 26px -10px rgb(0 0 0 / 0.42);
+}
+
+/* ---- LIQUI DEEP — immersive dark-water slabs ----------------------------- */
+
+.liqui-deep {
+  box-shadow: var(--liqui-shadow-major);
+}
+
+.liqui-deep::before {
+  z-index: -1;
+  background-color: #0b131e;
+  background-image:
+    radial-gradient(85% 65% at 16% -12%, rgb(52 92 138 / 0.42) 0%, transparent 64%),
+    radial-gradient(75% 62% at 102% 112%, rgb(34 66 118 / 0.36) 0%, transparent 62%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.05) 0%, transparent 32%);
+}
+
+.dark .liqui-deep::before {
+  background-color: #080d15;
+}
+
+.liqui-deep::after {
+  opacity: 0.95;
+}
+
+/* ---- LIQUI MINIMAL — small controls and dense UI ------------------------ */
+/* No pseudo-elements: cheapest tier. A single quiet hairline does the work.
+   Stays circular-cornered by design (dense lists don't need clipping). */
+
+.liqui-minimal {
+  background-color: color-mix(in srgb, var(--color-surface) 62%, transparent);
+  box-shadow: inset 0 0 0 1px rgb(148 163 184 / 0.18);
+}
+
+.dark .liqui-minimal {
+  background-color: color-mix(in srgb, var(--color-surface) 62%, transparent);
+  box-shadow: inset 0 0 0 1px rgb(148 197 253 / 0.1);
+}
+
+/* ---------------------------------------------------------------------------
+   4. INTERACTIONS
+   ------------------------------------------------------------------------ */
+
+.liqui-lift {
+  transition:
+    transform var(--liqui-dur-std) var(--liqui-ease-fluid),
+    box-shadow var(--liqui-dur-std) var(--liqui-ease-fluid),
+    filter var(--liqui-dur-std) var(--liqui-ease-fluid);
+}
+
+.liqui-lift:hover {
+  transform: translateY(-1px);
+}
+
+.liqui-primary.liqui-lift:hover {
+  box-shadow: var(--liqui-shadow-standard);
+}
+
+.liqui-primary.liqui-lift:active {
+  transform: translateY(0);
+  box-shadow: var(--liqui-shadow-micro);
+  transition-duration: var(--liqui-dur-fast);
+}
+
+.liqui-secondary.liqui-lift:hover {
+  box-shadow:
+    0 0 0 0.5px rgb(100 116 139 / 0.09),
+    0 2px 4px rgb(15 23 42 / 0.03),
+    0 12px 30px -10px rgb(15 23 42 / 0.08);
+}
+
+.dark .liqui-secondary.liqui-lift:hover {
+  box-shadow:
+    0 0 0 0.5px rgb(148 197 253 / 0.07),
+    0 2px 4px rgb(0 0 0 / 0.36),
+    0 16px 34px -12px rgb(0 0 0 / 0.52);
+}
+
+.liqui-focus:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 1px rgb(99 132 245 / 0.55),
+    0 0 0 3px rgb(99 102 241 / 0.18),
+    var(--liqui-shadow-micro);
+}
+
+} /* end @layer components */
+
+/* ---- LIQUID MORPH — meaningful state changes only ----------------------- */
+
+@keyframes liqui-settle {
+  0% {
+    transform: scale(1, 1);
+  }
+  28% {
+    transform: scale(0.965, 1.05);
+  }
+  56% {
+    transform: scale(1.02, 0.982);
+  }
+  78% {
+    transform: scale(0.995, 1.004);
+  }
+  100% {
+    transform: scale(1, 1);
+  }
+}
+
+.liqui-morph {
+  animation: liqui-settle 540ms var(--liqui-ease-fluid);
+}
+
+/* Soft presence for entering surfaces — replaces mechanical pop-ins. */
+@keyframes liqui-emerge {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@layer components {
+.liqui-emerge {
+  animation: liqui-emerge var(--liqui-dur-slow) var(--liqui-ease-settle) both;
+}
+} /* end @layer components */
+
+@media (prefers-reduced-motion: reduce) {
+  .liqui-morph,
+  .liqui-emerge {
+    animation: none;
+  }
+
+  .liqui-lift,
+  .liqui-lift:hover {
+    transform: none;
+  }
+}
