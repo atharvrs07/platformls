@@ -3,6 +3,8 @@ import authRoutes from "./auth.routes.js";
 import userRoutes from "./user.routes.js";
 import workspaceRoutes from "./workspace.routes.js";
 import settingsRoutes from "./settings.routes.js";
+import waitlistRoutes from "./waitlist.routes.js";
+import adminRoutes from "./admin.routes.js";
 
 const router = Router();
 
@@ -15,5 +17,7 @@ router.use("/user", userRoutes);
 router.use("/profile", settingsRoutes);
 router.use("/workspace", workspaceRoutes);
 router.use("/settings", settingsRoutes);
+router.use("/waitlist", waitlistRoutes);
+router.use("/admin", adminRoutes);
 
 export default router;

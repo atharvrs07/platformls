@@ -96,3 +96,48 @@ export interface WorkspaceDetail {
   projects: Project[];
   memberCount: number;
 }
+
+export type WaitlistStatus = "PENDING" | "GRANTED";
+
+export interface WaitlistEntry {
+  id: string;
+  email: string;
+  name: string;
+  status: WaitlistStatus;
+  grantedAt: string | null;
+  createdAt: string;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  username: string;
+  fullName: string;
+  role: User["role"];
+  isActive: boolean;
+  emailVerified: boolean;
+  lastLoginAt: string | null;
+  createdAt: string;
+  subscription: { plan: Plan; status: SubscriptionStatus } | null;
+  credits: { balance: number; lifetime: number } | null;
+}
+
+export interface AdminOverview {
+  users: { total: number; verified: number; admins: number };
+  workspaces: number;
+  projects: number;
+  sessions: number;
+  apiKeys: number;
+  auditLogs: number;
+  credits: { balanceSum: number; lifetimeSum: number; transactions: number };
+  plans: { plan: Plan; count: number }[];
+  recentUsers: Pick<User, "id" | "fullName" | "email" | "role" | "createdAt">[];
+  recentTxns: {
+    id: string;
+    amount: number;
+    reason: string;
+    description: string | null;
+    createdAt: string;
+    user: { fullName: string; email: string } | null;
+  }[];
+}

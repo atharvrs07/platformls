@@ -28,10 +28,11 @@ export function CtaBanner() {
               Ready to build something extraordinary?
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-white/80">
-              Join the workspace where AI, automation and infrastructure finally come together. Free to start.
+              Join the workspace where AI, automation and infrastructure finally come together.
+              Seats are limited — sign up for the waitlist and be first in line.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Link href="/register">
+              <Link href="/waitlist">
                 <Button
                   size="lg"
                   className="group relative w-full overflow-hidden bg-white text-brand-700 shadow-none hover:bg-white/90 sm:w-auto"
@@ -40,7 +41,7 @@ export function CtaBanner() {
                     aria-hidden
                     className="pointer-events-none absolute inset-y-0 left-0 w-1/3 animate-shine bg-gradient-to-r from-transparent via-brand-200/50 to-transparent"
                   />
-                  <span className="relative">Create free account</span>
+                  <span className="relative">Sign up for the waitlist</span>
                   <ArrowRight className="relative size-4 transition-transform duration-300 group-hover:translate-x-0.5" />
                 </Button>
               </Link>

@@ -1,5 +1,20 @@
 import { api } from "./api";
-import type { SessionInfo, User, UserBundle, UserPreferences, Profile, Workspace, WorkspaceDetail, Project } from "@/types";
+import type { SessionInfo, User, UserBundle, UserPreferences, Profile, Workspace, WorkspaceDetail, Project, WaitlistEntry, AdminUser, AdminOverview } from "@/types";
+
+export const waitlistApi = {
+  join: (body: { email: string; name: string }) =>
+    api.post<null>("/api/waitlist/join", body),
+};
+
+export const adminApi = {
+  overview: () => api.get<AdminOverview>("/api/admin/overview"),
+  users: () => api.get<{ users: AdminUser[] }>("/api/admin/users"),
+  setUserActive: (userId: string, isActive: boolean) =>
+    api.patch<null>(`/api/admin/users/${userId}/active`, { isActive }),
+  waitlist: () => api.get<{ entries: WaitlistEntry[] }>("/api/admin/waitlist"),
+  grant: (entryId: string) => api.post<null>(`/api/admin/waitlist/${entryId}/grant`),
+  revoke: (entryId: string) => api.post<null>(`/api/admin/waitlist/${entryId}/revoke`),
+};
 
 export const authApi = {
   login: (body: { identifier: string; password: string; rememberMe?: boolean }) =>

@@ -129,7 +129,7 @@ export function Pricing() {
                 </ul>
 
                 <div className="mt-7 flex-1" />
-                <Link href="/register" className="block">
+                <Link href="/waitlist" className="block">
                   <Button variant={plan.popular ? "primary" : "secondary"} className="w-full">
                     {plan.cta}
                   </Button>
@@ -139,7 +139,10 @@ export function Pricing() {
           </div>
         </Reveal>
 
-        <Reveal className="mt-8">
+        <Reveal className="mt-8 space-y-1.5">
+          <p className="text-center text-[13px] text-muted">
+            The final pricing may differ after the launch of the actual product.
+          </p>
           <p className="text-center text-[13px] text-muted">
             Need more?{" "}
             <a href={`mailto:${brand.emails.hello}`} className="font-medium text-brand-600 hover:underline">

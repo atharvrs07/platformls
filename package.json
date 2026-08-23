@@ -6,12 +6,18 @@
   "workspaces": [
     "apps/*"
   ],
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
   "scripts": {
-    "dev": "npm run dev --workspace @liquistudio/web",
+    "dev": "concurrently --kill-others-on-fail -n web,api -c blue,green \"npm run dev --workspace @liquistudio/web\" \"npm run dev:server\"",
     "dev:web": "npm run dev --workspace @liquistudio/web",
     "dev:server": "npm run dev --workspace @liquistudio/server",
     "build": "npm run build --workspace @liquistudio/web",
+    "build:web": "npm run build --workspace @liquistudio/web",
     "build:server": "npm run build --workspace @liquistudio/server",
+    "build:all": "npm run db:generate && npm run build:web && npm run build:server",
+    "start": "node start.mjs",
     "lint": "npm run lint --workspaces",
     "typecheck": "npm run typecheck --workspaces",
     "db:generate": "npm run db:generate --workspace @liquistudio/server",
@@ -20,5 +26,8 @@
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5"
   }
 }

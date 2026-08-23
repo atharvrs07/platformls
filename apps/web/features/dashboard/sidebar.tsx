@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronDown, ChevronsUpDown, CreditCard, LogOut, Plus, Settings, Sparkles, User } from "lucide-react";
-import { dashboardNav, sidebarFooterItems } from "@/config/navigation";
+import { dashboardNav, sidebarFooterItems, adminNav } from "@/config/navigation";
 import { LogoMark } from "@/components/ui/logo";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -14,10 +14,12 @@ import { brand } from "@/config/brand";
 
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const { user } = useAuth();
+  const groups = user?.role === "ADMIN" ? [...dashboardNav, ...adminNav] : dashboardNav;
 
   return (
     <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 py-4" aria-label="Sidebar">
-      {dashboardNav.map((group, i) => (
+      {groups.map((group, i) => (
         <div key={group.label ?? i}>
           {group.label && (
             <p className="mb-1.5 px-2.5 text-[11px] font-semibold uppercase tracking-widest text-muted/80">

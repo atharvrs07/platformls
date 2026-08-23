@@ -12,7 +12,14 @@ async function readBody(res: Response): Promise<ApiResponse<unknown>> {
   try {
     return JSON.parse(text);
   } catch {
-    return { success: false, error: { code: "PARSE", message: "Malformed response" } };
+    return {
+      success: false,
+      error: {
+        code: "PARSE",
+        message:
+          "The API server did not respond correctly. If this persists, make sure the API is running and up to date.",
+      },
+    };
   }
 }
 

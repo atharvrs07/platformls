@@ -35,6 +35,11 @@ const envSchema = z.object({
   APP_URL: z.string().default("http://localhost:3000"),
 
   BRAND_NAME: z.string().default("LiquiStudio"),
+
+  // Private beta — only these emails may register (plus waitlist entries granted access).
+  ALLOWED_SIGNUP_EMAILS: z
+    .string()
+    .default("blacktechguy6@gmail.com,atharvrs2010@gmail.com"),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -47,6 +52,13 @@ if (!parsed.success) {
 export const env = parsed.data;
 
 export const isProduction = env.NODE_ENV === "production";
+
+/** Emails allowed to register during the private beta. The first entry is treated as the admin. */
+export const allowedSignupEmails = env.ALLOWED_SIGNUP_EMAILS.split(",")
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean);
+
+export const adminEmail = allowedSignupEmails[0] ?? "";
 
 export const cookieOptions = {
   httpOnly: true,

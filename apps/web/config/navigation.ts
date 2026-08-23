@@ -73,6 +73,13 @@ export const sidebarFooterItems: NavItem[] = [
   { label: "Help & Support", href: "/help", icon: LifeBuoy, status: "soon" },
 ];
 
+export const adminNav: NavGroup[] = [
+  {
+    label: "Administration",
+    items: [{ label: "Admin Panel", href: "/admin", icon: ShieldCheck }],
+  },
+];
+
 export const settingsNav: NavGroup[] = [
   {
     items: [{ label: "Profile", href: "/settings", icon: UserRound }],

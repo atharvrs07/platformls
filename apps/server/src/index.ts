@@ -5,6 +5,9 @@ import { prisma } from "./prisma/client.js";
 async function main() {
   const app = createApp();
 
+  await prisma.$connect();
+  console.log("[storage] Database connection opened successfully");
+
   app.listen(env.PORT, () => {
     console.log(`[api] LiquiStudio API listening on http://localhost:${env.PORT}`);
   });

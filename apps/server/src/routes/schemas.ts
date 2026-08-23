@@ -59,6 +59,15 @@ export const deleteAccountSchema = z.object({
   password: z.string().min(1, "Enter your password to confirm"),
 });
 
+export const waitlistSchema = z.object({
+  email: z.string().email("Enter a valid email address"),
+  name: z.string().trim().min(2, "Enter your name").max(80),
+});
+
+export const setUserActiveSchema = z.object({
+  isActive: z.boolean(),
+});
+
 export const projectSchema = z.object({
   name: z.string().trim().min(1).max(120),
   description: z.string().max(500).optional().nullable(),

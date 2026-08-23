@@ -200,13 +200,13 @@ export function Hero() {
             className="reveal-child mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row"
             style={{ "--reveal-delay": "440ms" } as CSSProperties}
           >
-            <Link href="/register" className="w-full sm:w-auto">
+            <Link href="/waitlist" className="w-full sm:w-auto">
               <Button size="lg" className="group relative w-full overflow-hidden sm:w-auto">
                 <span
                   aria-hidden
                   className="pointer-events-none absolute inset-y-0 left-0 w-1/3 animate-shine bg-gradient-to-r from-transparent via-white/30 to-transparent"
                 />
-                <span className="relative">Get Started</span>
+                <span className="relative">Sign up for the waitlist</span>
                 <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-0.5" />
               </Button>
             </Link>
@@ -222,7 +222,7 @@ export function Hero() {
             className="reveal-child mt-5 text-[13px] text-muted"
             style={{ "--reveal-delay": "540ms" } as CSSProperties}
           >
-            Free to start · No credit card required · 100 welcome credits
+            Private beta · Limited seats · We&apos;ll let you know once testing starts
           </p>
         </Reveal>
       </div>

@@ -1,6 +1,6 @@
 import { User } from "@prisma/client";
 import { prisma } from "../prisma/client.js";
-import { env } from "../config/env.js";
+import { env, adminEmail, allowedSignupEmails } from "../config/env.js";
 import { ApiError } from "../utils/apiError.js";
 import { comparePassword, generateRandomToken, hashPassword, hashToken } from "../utils/security.js";
 import { signAccessToken } from "../utils/jwt.js";
@@ -15,6 +15,17 @@ export interface RegisterInput {
   username: string;
   fullName: string;
   password: string;
+}
+
+/** Private beta gate: founders list + waitlist entries granted access by an admin. */
+export async function isSignupAllowed(email: string) {
+  if (allowedSignupEmails.includes(email)) return true;
+
+  const granted = await prisma.waitlistEntry.findFirst({
+    where: { email, status: "GRANTED" },
+  });
+
+  return Boolean(granted);
 }
 
 function publicUser(user: User) {
@@ -97,25 +108,37 @@ async function issueEmailToken(userId: string, kind: "VERIFY_EMAIL" | "RESET_PAS
 }
 
 export async function registerUser(input: RegisterInput, meta: { userAgent?: string; ip?: string }) {
+  const email = input.email.toLowerCase();
+
+  const allowed = await isSignupAllowed(email);
+  if (!allowed) {
+    throw ApiError.forbidden(
+      "Registration is currently invite-only. Join the waitlist and we'll let you know when the beta starts."
+    );
+  }
+
   const existing = await prisma.user.findFirst({
-    where: { OR: [{ email: input.email.toLowerCase() }, { username: input.username.toLowerCase() }] },
+    where: { OR: [{ email }, { username: input.username.toLowerCase() }] },
   });
 
   if (existing) {
-    if (existing.email === input.email.toLowerCase()) {
+    if (existing.email === email) {
       throw ApiError.conflict("An account with this email already exists");
     }
     throw ApiError.conflict("This username is already taken");
   }
 
+  const role = email === adminEmail ? "ADMIN" : "USER";
+
   const passwordHash = await hashPassword(input.password);
 
   const user = await prisma.user.create({
     data: {
-      email: input.email.toLowerCase(),
+      email,
       username: input.username.toLowerCase(),
       fullName: input.fullName.trim(),
       passwordHash,
+      role,
       profile: { create: {} },
       preferences: { create: { theme: "SYSTEM" } },
       subscription: { create: { plan: "FREE" } },

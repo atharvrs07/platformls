@@ -47,3 +47,11 @@ export async function authenticate(req: Request, _res: Response, next: NextFunct
     next(error);
   }
 }
+
+export function requireAdmin(req: Request, _res: Response, next: NextFunction) {
+  if (!req.user || req.user.role !== "ADMIN") {
+    next(ApiError.forbidden("Admin access required"));
+    return;
+  }
+  next();
+}

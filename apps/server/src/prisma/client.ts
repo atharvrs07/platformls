@@ -1,4 +1,7 @@
 import { PrismaClient } from "@prisma/client";
+import { resolvePersistentDatabase } from "./storage.js";
+
+resolvePersistentDatabase();
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 

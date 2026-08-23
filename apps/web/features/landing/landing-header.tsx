@@ -69,9 +69,9 @@ export function LandingHeader() {
             </Button>
           </Link>
 
-          <Link href="/register">
+          <Link href="/waitlist">
             <Button size="sm" className="text-[13px]">
-              Get Started
+              Sign up for the waitlist
               <ArrowRight className="size-3.5" />
             </Button>
           </Link>
