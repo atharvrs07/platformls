@@ -1,22 +1,22 @@
 {
-  "name": "liquilink-platform",
+  "name": "liquistudio-platform",
   "private": true,
   "version": "1.0.0",
-  "description": "LiquiLink — all-in-one AI workspace platform",
+  "description": "LiquiStudio — all-in-one AI workspace platform",
   "workspaces": [
     "apps/*"
   ],
   "scripts": {
-    "dev": "npm run dev --workspace @liquilink/web",
-    "dev:web": "npm run dev --workspace @liquilink/web",
-    "dev:server": "npm run dev --workspace @liquilink/server",
-    "build": "npm run build --workspace @liquilink/web",
-    "build:server": "npm run build --workspace @liquilink/server",
+    "dev": "npm run dev --workspace @liquistudio/web",
+    "dev:web": "npm run dev --workspace @liquistudio/web",
+    "dev:server": "npm run dev --workspace @liquistudio/server",
+    "build": "npm run build --workspace @liquistudio/web",
+    "build:server": "npm run build --workspace @liquistudio/server",
     "lint": "npm run lint --workspaces",
     "typecheck": "npm run typecheck --workspaces",
-    "db:generate": "npm run db:generate --workspace @liquilink/server",
-    "db:migrate": "npm run db:migrate --workspace @liquilink/server",
-    "db:seed": "npm run db:seed --workspace @liquilink/server"
+    "db:generate": "npm run db:generate --workspace @liquistudio/server",
+    "db:migrate": "npm run db:migrate --workspace @liquistudio/server",
+    "db:seed": "npm run db:seed --workspace @liquistudio/server"
   },
   "engines": {
     "node": ">=20.0.0"

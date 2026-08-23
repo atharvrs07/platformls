@@ -1,4 +1,4 @@
-# LiquiLink Platform
+# LiquiStudio Platform
 
 > **Phase 1 — Foundation.** A production-grade monorepo for an all-in-one AI workspace.
 

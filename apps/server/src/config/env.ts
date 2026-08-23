@@ -29,12 +29,12 @@ const envSchema = z.object({
   MAILER_PORT: z.coerce.number().optional(),
   MAILER_USER: z.string().optional(),
   MAILER_PASS: z.string().optional(),
-  MAILER_FROM: z.string().default("LiquiLink <noreply@liquilink.in>"),
+  MAILER_FROM: z.string().default("LiquiStudio <noreply@liquistudio.com>"),
   MAILER_SECURE: z.string().optional().transform((v) => v === "true"),
 
   APP_URL: z.string().default("http://localhost:3000"),
 
-  BRAND_NAME: z.string().default("LiquiLink"),
+  BRAND_NAME: z.string().default("LiquiStudio"),
 });
 
 const parsed = envSchema.safeParse(process.env);

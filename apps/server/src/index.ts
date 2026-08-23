@@ -6,7 +6,7 @@ async function main() {
   const app = createApp();
 
   app.listen(env.PORT, () => {
-    console.log(`[api] LiquiLink API listening on http://localhost:${env.PORT}`);
+    console.log(`[api] LiquiStudio API listening on http://localhost:${env.PORT}`);
   });
 }
 

@@ -8,7 +8,7 @@ import { Input, type InputProps } from "@/components/ui/input";
 /* ============================================================================
    LIQUI PRIMITIVES
    ----------------------------------------------------------------------------
-   The canonical way to inherit the LiquiLink design language. New surfaces
+   The canonical way to inherit the LiquiStudio design language. New surfaces
    should use these instead of hand-assembling material classes; they
    centralize geometry (G1/G2/G3), material tiering, optics and motion.
    ========================================================================== */
@@ -31,7 +31,7 @@ const geometryClass: Record<LiquiGeometry, string> = {
 export interface LiquiSurfaceProps extends HTMLAttributes<HTMLDivElement> {
   /** Material hierarchy: primary (major surfaces), secondary (grouped), minimal (dense UI). */
   tier?: LiquiTier;
-  /** Geometry token. Defaults to G2, the LiquiLink signature. */
+  /** Geometry token. Defaults to G2, the LiquiStudio signature. */
   geometry?: LiquiGeometry;
   /** Gentle suspension on hover (interactive surfaces only). */
   lift?: boolean;

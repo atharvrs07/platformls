@@ -7,32 +7,32 @@
  */
 
 export const brand = {
-  name: "LiquiLink",
-  legalName: "LiquiLink",
+  name: "LiquiStudio",
+  legalName: "LiquiStudio",
   tagline: "Build. Automate. Create.",
   description: "The all-in-one AI workspace.",
   longDescription:
-    "LiquiLink combines AI, workflows, automation, backend tools and developer utilities into one seamless platform.",
+    "LiquiStudio combines AI, workflows, automation, backend tools and developer utilities into one seamless platform.",
 
   domains: {
-    website: "liquilink.in",
-    platform: "platform.liquilink.in",
+    website: "liquistudio.com",
+    platform: "platform.liquistudio.com",
   },
 
   urls: {
-    website: "https://liquilink.in",
-    platform: "https://platform.liquilink.in",
-    docs: "https://liquilink.in/docs",
-    blog: "https://liquilink.in/blog",
-    status: "https://status.liquilink.in",
-    twitter: "https://x.com/liquilink",
-    github: "https://github.com/liquilink",
+    website: "https://liquistudio.com",
+    platform: "https://platform.liquistudio.com",
+    docs: "https://liquistudio.com/docs",
+    blog: "https://liquistudio.com/blog",
+    status: "https://status.liquistudio.com",
+    twitter: "https://x.com/liquistudio",
+    github: "https://github.com/liquistudio",
   },
 
   emails: {
-    support: "support@liquilink.in",
-    hello: "hello@liquilink.in",
-    security: "security@liquilink.in",
+    support: "support@liquistudio.com",
+    hello: "hello@liquistudio.com",
+    security: "security@liquistudio.com",
   },
 
   /** Logo accent — used by the <Logo /> mark and inline brand moments. */

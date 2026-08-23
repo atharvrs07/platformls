@@ -4,8 +4,8 @@ import { hashPassword } from "../src/utils/security.js";
 const prisma = new PrismaClient();
 
 async function main() {
-  const email = process.env.SEED_EMAIL ?? "demo@liquilink.in";
-  const password = process.env.SEED_PASSWORD ?? "LiquiLink123";
+  const email = process.env.SEED_EMAIL ?? "demo@liquistudio.com";
+  const password = process.env.SEED_PASSWORD ?? "LiquiStudio123";
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
@@ -24,7 +24,7 @@ async function main() {
       timezone: "Asia/Kolkata",
       passwordHash,
       profile: {
-        create: { bio: "Founding member of the LiquiLink workspace.", title: "Founder" },
+        create: { bio: "Founding member of the LiquiStudio workspace.", title: "Founder" },
       },
       preferences: {
         create: { theme: "SYSTEM", language: "en" },

@@ -43,7 +43,7 @@ const stats = [
   { to: 1, suffix: "", label: "Login for everything" },
 ];
 
-export function WhyLiquiLink() {
+export function WhyLiquiStudio() {
   return (
     <section className="relative overflow-hidden px-5 py-24 sm:px-8">
       <div
