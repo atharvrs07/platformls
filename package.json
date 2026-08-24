@@ -16,7 +16,7 @@
     "build": "npm run build --workspace @liquistudio/web",
     "build:web": "npm run build --workspace @liquistudio/web",
     "build:server": "npm run build --workspace @liquistudio/server",
-    "build:all": "npm run db:generate && npm run build:web && npm run build:server",
+    "build:all": "npm run db:generate && npm run build:web && npm run build:server && node postbuild.cjs",
     "start": "node start.mjs",
     "lint": "npm run lint --workspaces",
     "typecheck": "npm run typecheck --workspaces",
