@@ -51,3 +51,6 @@ Company name, domain, colors, and links live in a single file:
 | `npm run typecheck`   | Type-check all workspaces        |
 | `npm run db:generate` | Generate Prisma client           |
 | `npm run db:migrate`  | Run database migrations          |
+
+
+..
