@@ -273,6 +273,11 @@ if (!dbReady) {
 
 // ---- Internal API lifecycle --------------------------------------------
 let api = null;
+let apiRestartCount = 0;
+const API_MAX_RESTARTS = 10;
+const API_RESTART_BASE_DELAY_MS = 2000;
+
+let apiRestartTimer = null;
 
 function startApi() {
   if (api) return;
@@ -285,8 +290,22 @@ function startApi() {
   api.on("exit", (code) => {
     log("start", `API process exited with code ${code}`);
     api = null;
+    if (apiRestartTimer) { clearTimeout(apiRestartTimer); apiRestartTimer = null; }
+    if (!shuttingDown) {
+      if (apiRestartCount < API_MAX_RESTARTS) {
+        apiRestartCount += 1;
+        const delay = Math.min(API_RESTART_BASE_DELAY_MS * apiRestartCount, 30000);
+        log("start", `Scheduling API restart #${apiRestartCount} in ${delay}ms`);
+        setTimeout(() => startApi(), delay);
+      } else {
+        log("start", `API restart limit reached (${API_MAX_RESTARTS}). Will not restart automatically.`);
+      }
+    }
   });
   log("start", "API process launched");
+  // If the API stays alive for 60 s, reset the restart counter so
+  // transient failures later are not penalised by earlier crashes.
+  apiRestartTimer = setTimeout(() => { apiRestartCount = 0; }, 60000);
 }
 
 function scheduleDbRetry() {
@@ -317,7 +336,7 @@ function scheduleDbRetry() {
 if (dbReady) startApi();
 else scheduleDbRetry();
 
-async function waitForApi(retries = 40, delayMs = 500) {
+async function waitForApi(retries = 120, delayMs = 500) {
   for (let i = 1; i <= retries; i++) {
     try {
       const res = await fetch(`${INTERNAL_ORIGIN}/api/health`);
