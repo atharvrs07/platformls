@@ -227,6 +227,102 @@ function ensureEngineExecutable(dir) {
 ensureEngineExecutable(__dirname);
 ensureEngineExecutable(serverDir);
 
+// ---- Stale-process reclaim ---------------------------------------------
+// Passenger recycles this supervisor with SIGKILL, which used to orphan the
+// API child (and its Prisma engine). Orphans kept :4000 busy, every new boot
+// crash-looped on EADDRINUSE, and the leaked processes eventually exhausted
+// the hosting account's process cap - taking every other site down with 503.
+//
+// Fix, three layers:
+//   1. Before starting the API, kill any leftover process that belongs to
+//      THIS app (pidfile first, then a /proc scan as a safety net).
+//   2. Run the API through api-guard.mjs, which exits on its own the moment
+//      the supervisor disappears.
+//   3. Never spawn while the port is still busy - reclaim first, verify,
+//      and only then launch.
+let api = null; // API child handle (managed below)
+const API_PID_FILE = path.join(realDataDir, "api.pid");
+const APP_ROOT_REAL = fs.realpathSync(__dirname);
+const APP_MARKERS = [
+  path.join("apps", "server", "dist", "index.js"),
+  "api-guard.mjs",
+  "@prisma/engines",
+  "query-engine",
+  "schema-engine",
+];
+
+function killPid(pid, why) {
+  if (!pid || pid === process.pid) return;
+  try {
+    process.kill(pid, "SIGTERM");
+    log("start", `Killed stale process ${pid} (${why})`);
+    setTimeout(() => {
+      try { process.kill(pid, "SIGKILL"); } catch { /* already gone */ }
+    }, 2000).unref();
+  } catch {
+    /* not running / not ours */
+  }
+}
+
+function reclaimStaleProcesses() {
+  // Layer 1a: pidfile from a previous supervisor.
+  try {
+    const old = Number(fs.readFileSync(API_PID_FILE, "utf8").trim());
+    if (old) killPid(old, "pidfile");
+  } catch { /* none */ }
+
+  // Layer 1b: /proc scan - anything running from this app's install path
+  // (any version dir) that is not part of the current process tree.
+  let scanned = 0, killed = 0;
+  try {
+    const appDomainRoot = path.dirname(path.dirname(path.dirname(APP_ROOT_REAL))); // .../hbuilds
+    for (const entry of fs.readdirSync("/proc")) {
+      const pid = Number(entry);
+      if (!pid || pid === process.pid) continue;
+      let cmd = "";
+      try { cmd = fs.readFileSync(`/proc/${pid}/cmdline`, "utf8").replace(/\0/g, " "); } catch { continue; }
+      if (!cmd) continue;
+      scanned++;
+      const isOurs =
+        (cmd.includes(appDomainRoot) || cmd.includes(realDataDir)) &&
+        APP_MARKERS.some((m) => cmd.includes(m));
+      if (!isOurs) continue;
+      // Skip our own children (api process tree started by this supervisor).
+      let ppid = 0;
+      try {
+        const stat = fs.readFileSync(`/proc/${pid}/stat`, "utf8");
+        ppid = Number(stat.slice(stat.lastIndexOf(")") + 2).split(" ")[1]);
+      } catch { /* ignore */ }
+      if (ppid === process.pid || (api && api.pid && (pid === api.pid || ppid === api.pid))) continue;
+      killPid(pid, "orphan from previous boot");
+      killed++;
+    }
+  } catch (e) {
+    log("start", `/proc scan skipped: ${e.message}`);
+  }
+  log("start", `Stale-process reclaim done (scanned ${scanned}, killed ${killed})`);
+}
+
+function isPortFree(port) {
+  return new Promise((resolve) => {
+    const probe = http.createServer();
+    probe.once("error", () => resolve(false));
+    probe.listen(port, "127.0.0.1", () => probe.close(() => resolve(true)));
+  });
+}
+
+async function waitForPortFree(port, attempts = 10, delayMs = 500) {
+  for (let i = 0; i < attempts; i++) {
+    if (await isPortFree(port)) return true;
+    await new Promise((r) => setTimeout(r, delayMs));
+  }
+  return false;
+}
+
+// Reclaim orphans from earlier boots BEFORE any migration/seed work so those
+// subprocesses do not fail with EAGAIN under a process-cap squeeze.
+reclaimStaleProcesses();
+
 // Skip migrations when already applied for this exact deployment; a failure
 // must NEVER crash-loop the app under Passenger - keep serving the website
 // and retry in the background instead.
@@ -272,41 +368,66 @@ if (!dbReady) {
 }
 
 // ---- Internal API lifecycle --------------------------------------------
-let api = null;
 let apiRestartCount = 0;
-const API_MAX_RESTARTS = 10;
-const API_RESTART_BASE_DELAY_MS = 2000;
+const API_MAX_RESTARTS = 5;
+const API_RESTART_BASE_DELAY_MS = 3000;
+const API_GUARD = path.join(__dirname, "api-guard.mjs");
 
 let apiRestartTimer = null;
+let apiStarting = false;
 
-function startApi() {
-  if (api) return;
-  bootStage = "starting-api";
-  api = spawn(process.execPath, [serverEntry], {
-    cwd: serverDir,
-    env: { ...process.env, PORT: String(INTERNAL_PORT) },
-    stdio: ["ignore", "inherit", "inherit"],
-  });
-  api.on("exit", (code) => {
-    log("start", `API process exited with code ${code}`);
-    api = null;
-    if (apiRestartTimer) { clearTimeout(apiRestartTimer); apiRestartTimer = null; }
-    if (!shuttingDown) {
-      if (apiRestartCount < API_MAX_RESTARTS) {
-        apiRestartCount += 1;
-        const delay = Math.min(API_RESTART_BASE_DELAY_MS * apiRestartCount, 30000);
-        log("start", `Scheduling API restart #${apiRestartCount} in ${delay}ms`);
-        setTimeout(() => startApi(), delay);
-      } else {
-        log("start", `API restart limit reached (${API_MAX_RESTARTS}). Will not restart automatically.`);
+async function startApi() {
+  if (api || apiStarting) return;
+  apiStarting = true;
+  try {
+    bootStage = "starting-api";
+
+    // Never spawn into a busy port: reclaim, then verify.
+    if (!(await isPortFree(INTERNAL_PORT))) {
+      log("start", `Port ${INTERNAL_PORT} busy - reclaiming stale processes`);
+      reclaimStaleProcesses();
+      if (!(await waitForPortFree(INTERNAL_PORT))) {
+        log("start", `Port ${INTERNAL_PORT} still busy after reclaim - will retry later`);
+        scheduleApiRestart();
+        return;
       }
     }
-  });
-  log("start", "API process launched");
-  // If the API stays alive for 60 s, reset the restart counter so
-  // transient failures later are not penalised by earlier crashes.
-  apiRestartTimer = setTimeout(() => { apiRestartCount = 0; }, 60000);
+
+    const launcher = fs.existsSync(API_GUARD) ? [API_GUARD, serverEntry] : [serverEntry];
+    api = spawn(process.execPath, launcher, {
+      cwd: serverDir,
+      env: { ...process.env, PORT: String(INTERNAL_PORT), SUPERVISOR_PID: String(process.pid) },
+      stdio: ["ignore", "inherit", "inherit"],
+    });
+    try { fs.writeFileSync(API_PID_FILE, String(api.pid)); } catch { /* non-fatal */ }
+
+    api.on("exit", (code, signal) => {
+      log("start", `API process exited with code ${code}${signal ? ` (signal ${signal})` : ""}`);
+      api = null;
+      try { fs.unlinkSync(API_PID_FILE); } catch { /* ignore */ }
+      if (apiRestartTimer) { clearTimeout(apiRestartTimer); apiRestartTimer = null; }
+      if (!shuttingDown) scheduleApiRestart();
+    });
+    log("start", `API process launched (pid ${api.pid})`);
+    // If the API stays alive for 60 s, reset the restart counter so
+    // transient failures later are not penalised by earlier crashes.
+    apiRestartTimer = setTimeout(() => { apiRestartCount = 0; }, 60000);
+  } finally {
+    apiStarting = false;
+  }
 }
+
+function scheduleApiRestart() {
+  if (apiRestartCount < API_MAX_RESTARTS) {
+    apiRestartCount += 1;
+    const delay = Math.min(API_RESTART_BASE_DELAY_MS * apiRestartCount, 30000);
+    log("start", `Scheduling API restart #${apiRestartCount} in ${delay}ms`);
+    setTimeout(() => { startApi().catch((e) => log("start", `API start failed: ${e.message}`)); }, delay);
+  } else {
+    log("start", `API restart limit reached (${API_MAX_RESTARTS}). Will not restart automatically.`);
+  }
+}
+
 
 function scheduleDbRetry() {
   let tries = 0;
@@ -327,13 +448,13 @@ function scheduleDbRetry() {
         /* non-fatal */
       }
       clearInterval(timer);
-      startApi();
+      startApi().catch((e) => log("start", `API start failed: ${e.message}`));
       log("start", "Database became ready after retry");
     }
   }, 45000);
 }
 
-if (dbReady) startApi();
+if (dbReady) startApi().catch((e) => log("start", `API start failed: ${e.message}`));
 else scheduleDbRetry();
 
 async function waitForApi(retries = 120, delayMs = 500) {
@@ -378,8 +499,14 @@ function shutdown(server) {
   shuttingDown = true;
   log("start", "Shutting down--------------");
   if (server) server.close(() => log("start", "Web server closed"));
-  if (api) api.kill("SIGTERM");
-  setTimeout(() => process.exit(0), 3000);
+  const child = api;
+  if (child) {
+    child.kill("SIGTERM");
+    setTimeout(() => { try { child.kill("SIGKILL"); } catch { /* gone */ } }, 2000).unref();
+    child.once("exit", () => process.exit(0));
+  }
+  try { fs.unlinkSync(API_PID_FILE); } catch { /* ignore */ }
+  setTimeout(() => process.exit(0), 4000);
 }
 
 start()
